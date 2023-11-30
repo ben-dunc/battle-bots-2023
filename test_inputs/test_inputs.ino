@@ -37,6 +37,7 @@ void loop() {
   Serial.print("But 1: "); Serial.println(digitalRead(19));
   Serial.print("Swt 0: "); Serial.println(digitalRead(4));
   Serial.print("Swt 1: "); Serial.println(digitalRead(18));
+  Serial.print("Swt (robot PCB): "); Serial.println(digitalRead(5));
   delay(1000);
   for (int i = 0; i < 25; i++)
     Serial.println();
