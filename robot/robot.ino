@@ -12,7 +12,7 @@
 #define FULL 255
 #define HALF 127
 
-#define DEBUG false
+#define DEBUG true
 
 // pins
 #define CE_PIN 9
@@ -54,6 +54,7 @@ void setupRadio() {
 
   if (channel)
     radio.setChannel(152);
+  
   radio.setPALevel(RF24_PA_LOW);
   radio.setPayloadSize(sizeof(payload));
   radio.openWritingPipe(address[RX_ADDRESS_NUMBER]);
@@ -80,10 +81,16 @@ void setup() {
   ESC.attach(PIN_ESC_PWM, 1000, 2000);
 
   channel = digitalRead(PIN_CHANNEL);
+  
+  if (DEBUG) {
+    Serial.print("channel: ");
+    Serial.println(channel);
+  }
 
   digitalWrite(PIN_LED_CHANNEL, channel ? HIGH : LOW);
 
-  setupRadio();
+  if (!DEBUG)
+    setupRadio();
 } 
 
 void printSignals() {
@@ -102,6 +109,10 @@ void printSignals() {
 
 void readRadioValues() {
   uint8_t pipe;
+
+  if (DEBUG)
+    // Serial.println("Attempting Read. ");
+
   if (radio.available(&pipe)) {              // is there a payload? get the pipe number that recieved it
     radio.read(&payload, sizeof(payload));             // fetch payload from FIFO
 
@@ -166,7 +177,7 @@ void applySignals() {
 
 void loop() {
   readRadioValues();
-  applySignals();
+  // applySignals();
 
   // update con led
   if (timeref < millis())

@@ -20,7 +20,7 @@
 #include <SPI.h>
 #include <Bounce2.h>
 
-#define DEBUG false
+#define DEBUG true
 
 // PINS
 #define CE_PIN 9
@@ -39,6 +39,9 @@
 #define WHEEL_INVERSE 19
 #define PWR_ON 4 // POWER_ON
 #define CHANNEL 18
+
+#define RED_LED 6
+#define ORANGE_LED 7
 
 // RANGES
 #define POT_MAX 340
@@ -102,6 +105,8 @@ void setup() {
   pinMode(WHEEL_INVERSE, INPUT);
   pinMode(PWR_ON, INPUT);
   pinMode(CHANNEL, INPUT);
+  pinMode(RED_LED, OUTPUT);
+  pinMode(ORANGE_LED, OUTPUT);
   btn_barrel_on.attach(BARREL_ON, HIGH);
   btn_barrel_on.interval(50);
   btn_wheel_inverse.attach(WHEEL_INVERSE, HIGH);
@@ -109,7 +114,13 @@ void setup() {
 
   channel = digitalRead(CHANNEL);
 
-  setupRadio();
+  Serial.println("Serial connected");
+
+  // if (!DEBUG) {
+    digitalWrite(RED_LED, HIGH);
+    setupRadio();
+    digitalWrite(RED_LED, LOW);
+  // }
 }
 
 void printInputs() {
@@ -137,11 +148,11 @@ void printInputs() {
 void printSignals() {
   Serial.print("on/off: ");
   Serial.print(payload[0]);
-  Serial.print("\tb_trim: ");
+  Serial.print("\tb_speed: ");
   Serial.print(payload[1]);
-  Serial.print("\tr_trim: ");
+  Serial.print("\tr_speed: ");
   Serial.print(payload[2]);
-  Serial.print("\tl_trim: ");
+  Serial.print("\tl_speed: ");
   Serial.print(payload[3]);
   Serial.println();
 }
@@ -201,12 +212,17 @@ void transmitRadio() {
       Serial.println(F("Transmission failed or timed out"));  // payload was not delivered
     }
   }
+  if (report)
+    digitalWrite(ORANGE_LED, HIGH);
+  else
+    digitalWrite(ORANGE_LED, LOW);
 }
 
 void loop() {
   getInputs();
   formatSignals();
-  transmitRadio();
+  // if (!DEBUG)
+    transmitRadio();
 
   if (DEBUG) {
     printInputs();
