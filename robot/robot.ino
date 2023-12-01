@@ -98,7 +98,7 @@ void readRadioValues() {
       Serial.print("\t");  // print the payload's value
       Serial.print(payload[3]);  // print the payload's value
       Serial.println();  // print the payload's value
-      reportTimeRef = millis() + 1000;
+      reportTimeRef = millis() + 0;
     }
   } else if (missTimeRef < millis()) {
     missTimeRef = millis() + 3000;

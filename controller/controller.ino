@@ -167,6 +167,29 @@ void getInputs() {
     wheels_inverse = !wheels_inverse;
 }
 
+void formatSignals() {
+  payload[0] = pwr_on; // on/off
+  payload[1] = constrain(barrel_on ? 255 - barrel_trim : 0, 0, 255); // barrel
+  
+  payload[2] = constrain(map(
+    // constrain(joy1 + l_wheel_trim / 4 - 50, 0, JOY_MAX + POT_MAX / 4),
+    joy1,
+    JOY_MIN, 
+    JOY_MAX,
+    0, 
+    255
+  ) - (l_wheel_trim - (POT_MAX / 2)), 0, 255);
+  
+  payload[3] = constrain(map(
+    // constrain(joy0 + r_wheel_trim / 4 - 50, 0, JOY_MAX + POT_MAX / 4),
+    joy0,
+    JOY_MIN, 
+    JOY_MAX,
+    0, 
+    255
+  ) - (r_wheel_trim - (POT_MAX / 2)), 0, 255);
+}
+
 void transmitRadio() {
   unsigned long start_timer = micros();  // start the timer
   bool report = radio.writeFast(&payload, sizeof(payload));
@@ -198,13 +221,14 @@ void transmitRadio() {
 }
 
 void loop() {
-  payload[0] += 1;
-  payload[1] += 2;
-  payload[2] -= 1;
-  payload[3] -= 2;
+  // payload[0] += 1;
+  // payload[1] += 2;
+  // payload[2] -= 1;
+  // payload[3] -= 2;
 
   getInputs();
-  printInputs();
+  // printInputs();
+  formatSignals();
 
   transmitRadio();
 
