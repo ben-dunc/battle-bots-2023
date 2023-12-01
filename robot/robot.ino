@@ -1,7 +1,7 @@
 /*
     robot.ino
  */
-
+ 
 #include <SPI.h>
 #include "printf.h"
 #include "RF24.h"
@@ -35,9 +35,10 @@ uint8_t address[][6] = { "1Node", "2Node" };
 
 uint8_t payload[4];
 long missTimeRef = 0;
+long reportTimeRef = 0;
 bool channel = false;
 
-
+ 
 // SETUP
 
 void setupRadio() {
@@ -59,46 +60,48 @@ void setupRadio() {
 
 void setup() {
   Serial.begin(9600);
-  while (!Serial)
-    ;
+  while (!Serial);
   printf_begin();
 
   pinMode(PIN_CHANNEL, INPUT);
-  
   channel = digitalRead(PIN_CHANNEL);
-  missTimeRef = millis();
-  setupRadio();
-
   if (DEBUG) {
     Serial.print("channel: ");
     Serial.println(channel);
   }
-}
+
+  missTimeRef = millis();
+  reportTimeRef = millis();
+
+  setupRadio();
+} 
 
 // LOOP
 
 void readRadioValues() {
   uint8_t pipe;
-  if (radio.available(&pipe)) {             // is there a payload? get the pipe number that recieved it
-    radio.read(&payload, sizeof(payload));  // fetch payload from FIFO
+  if (radio.available(&pipe)) {              // is there a payload? get the pipe number that recieved it
+    radio.read(&payload, sizeof(payload));             // fetch payload from FIFO
     radio.flush_rx();
 
-    Serial.print(F("Received "));
-    Serial.print(sizeof(payload));  // print the size of the payload
-    Serial.print(F(" bytes on pipe "));
-    Serial.print(pipe);  // print the pipe number
-    Serial.print(F(":\t"));
-    Serial.print(payload[0]);  // print the payload's value
-    Serial.print("\t");        // print the payload's value
-    Serial.print(payload[1]);  // print the payload's value
-    Serial.print("\t");        // print the payload's value
-    Serial.print(payload[2]);  // print the payload's value
-    Serial.print("\t");        // print the payload's value
-    Serial.print(payload[3]);  // print the payload's value
-    Serial.println();          // print the payload's value
-    missTimeRef = millis() + 1000;
+    if (reportTimeRef < millis()) {
+      Serial.print(F("Received "));
+      Serial.print(sizeof(payload));  // print the size of the payload
+      Serial.print(F(" bytes on pipe "));
+      Serial.print(pipe);  // print the pipe number
+      Serial.print(F(":\t"));
+      Serial.print(payload[0]);  // print the payload's value
+      Serial.print("\t");  // print the payload's value
+      Serial.print(payload[1]);  // print the payload's value
+      Serial.print("\t");  // print the payload's value
+      Serial.print(payload[2]);  // print the payload's value
+      Serial.print("\t");  // print the payload's value
+      Serial.print(payload[3]);  // print the payload's value
+      Serial.println();  // print the payload's value
+      reportTimeRef = millis() + 1000;
+    }
   } else if (missTimeRef < millis()) {
-    missTimeRef = millis() + 1000;
+    missTimeRef = millis() + 3000;
     Serial.print(".");
   }
 }
