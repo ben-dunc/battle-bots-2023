@@ -5,6 +5,7 @@
 #include <SPI.h>
 #include "printf.h"
 #include "RF24.h"
+#include <Servo.h>
 
 #define TX_ADDRESS_NUMBER 0
 #define RX_ADDRESS_NUMBER 1
@@ -34,6 +35,14 @@ RF24 radio(CE_PIN, CSN_PIN);
 uint8_t address[][6] = { "1Node", "2Node" };
 
 uint8_t payload[4];
+
+uint8_t pwr_on_read = 0;
+uint8_t barrel_read = 0;
+uint8_t l_wheel_read = 0;
+uint8_t r_wheel_read = 0;
+
+Servo ESC;
+
 long missTimeRef = 0;
 long reportTimeRef = 0;
 bool channel = false;
@@ -63,6 +72,19 @@ void setup() {
   while (!Serial);
   printf_begin();
 
+  // initialize pins
+  pinMode(PIN_LED_CON, OUTPUT);
+  pinMode(PIN_LED_CHANNEL, OUTPUT);
+  pinMode(PIN_ESC_PWM, OUTPUT);
+  pinMode(PIN_R_PWM, OUTPUT);
+  pinMode(PIN_L_PWM, OUTPUT);
+  pinMode(PIN_IN_1, OUTPUT);
+  pinMode(PIN_IN_2, OUTPUT);
+  pinMode(PIN_IN_3, OUTPUT);
+  pinMode(PIN_IN_4, OUTPUT);
+
+  ESC.attach(PIN_ESC_PWM, 1000, 2000);
+
   pinMode(PIN_CHANNEL, INPUT);
   channel = digitalRead(PIN_CHANNEL);
   if (DEBUG) {
@@ -73,10 +95,55 @@ void setup() {
   missTimeRef = millis();
   reportTimeRef = millis();
 
+  digitalWrite(PIN_LED_CHANNEL, channel ? HIGH : LOW);
+
   setupRadio();
 } 
 
-// LOOP
+void applySignals() {
+  if (pwr_on_read) {
+    // barrel esc
+    ESC.write(map(barrel_read, 0, 255, 0, 180));
+
+    // l_wheel
+    analogWrite(PIN_L_PWM, map(abs(l_wheel_read - HALF), 0, HALF, 0, FULL));
+    if (l_wheel_read < HALF - 5) { // backwards
+      digitalWrite(PIN_IN_1, LOW);
+      digitalWrite(PIN_IN_2, HIGH);
+    } else if (l_wheel_read > HALF + 5) { // forwards
+      digitalWrite(PIN_IN_1, HIGH);
+      digitalWrite(PIN_IN_2, LOW);
+    } else { // off
+      digitalWrite(PIN_IN_1, LOW);
+      digitalWrite(PIN_IN_2, LOW);
+    }
+
+    // r_wheel - NOTE: This one is reversed because the motor is mirrored compared to the left one
+    analogWrite(PIN_R_PWM, map(abs(r_wheel_read - HALF), 0, HALF, 0, FULL));
+    if (r_wheel_read < HALF - 5) { // backwards
+      digitalWrite(PIN_IN_3, HIGH);
+      digitalWrite(PIN_IN_4, LOW);
+    } else if (r_wheel_read > HALF + 5) { // forwards
+      digitalWrite(PIN_IN_3, LOW);
+      digitalWrite(PIN_IN_4, HIGH);
+    } else { // off
+      digitalWrite(PIN_IN_3, LOW);
+      digitalWrite(PIN_IN_4, LOW);
+    }
+    
+  } else {
+    ESC.write(0);
+
+    // shut everything down
+    analogWrite(PIN_L_PWM, 0);
+    digitalWrite(PIN_IN_1, LOW);
+    digitalWrite(PIN_IN_2, LOW);
+    
+    analogWrite(PIN_R_PWM, 0);
+    digitalWrite(PIN_IN_3, LOW);
+    digitalWrite(PIN_IN_4, LOW);
+  }
+}
 
 void readRadioValues() {
   uint8_t pipe;
@@ -99,13 +166,16 @@ void readRadioValues() {
       Serial.print(payload[3]);  // print the payload's value
       Serial.println();  // print the payload's value
       reportTimeRef = millis() + 0;
+      digitalWrite(PIN_LED_CON, LOW);
     }
   } else if (missTimeRef < millis()) {
     missTimeRef = millis() + 3000;
+    digitalWrite(PIN_LED_CON, HIGH);
     Serial.print(".");
   }
 }
 
 void loop() {
   readRadioValues();
+  applySignals();
 }
