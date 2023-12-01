@@ -35,11 +35,11 @@ uint8_t address[][6] = { "1Node", "2Node" };
 
 bool channel = false;
 
-unsigned char payload[4];
-unsigned char pwr_on_read = 0;
-unsigned char barrel_read = 0;
-unsigned char l_wheel_read = 0;
-unsigned char r_wheel_read = 0;
+float payload[4];
+float pwr_on_read = 0;
+float barrel_read = 0;
+float l_wheel_read = 0;
+float r_wheel_read = 0;
 
 Servo ESC;
 long timeref = 0;
@@ -52,8 +52,8 @@ void setupRadio() {
     Serial.println(F("radio hardware is not responding!!"));
   Serial.println(F("This is the TRANSMITTER"));
 
-  if (channel)
-    radio.setChannel(152);
+  // if (channel)
+  //   radio.setChannel(152);
   
   radio.setPALevel(RF24_PA_LOW);
   radio.setPayloadSize(sizeof(payload));
@@ -116,13 +116,14 @@ void readRadioValues() {
   if (radio.available(&pipe)) {              // is there a payload? get the pipe number that recieved it
     radio.read(&payload, sizeof(payload));             // fetch payload from FIFO
 
+    if (DEBUG)
+      printSignals();
+
     pwr_on_read = payload[0];
     barrel_read = payload[1];
     l_wheel_read = payload[2];
     r_wheel_read = payload[3];
 
-    if (DEBUG)
-      printSignals();
 
     timeref = millis() + timestep;
     digitalWrite(PIN_LED_CON, HIGH);

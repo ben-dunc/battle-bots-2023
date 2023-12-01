@@ -15,6 +15,8 @@
   Pot 2 (pin A2) bottom-most - range: 0 - 346
 */
 
+// TODO: barrel needs to toggle
+
 #include "RF24.h"
 #include "printf.h"
 #include <SPI.h>
@@ -59,7 +61,7 @@ uint8_t address[][6] = { "1Node", "2Node" };
   payload[2] = r wheel motor
   payload[3] = l wheel motor
 */
-unsigned char payload[4];
+float payload[4];
 float barrel_trim = 0.0;   // pot0
 float r_wheel_trim = 0.0;  // pot1
 float l_wheel_trim = 0.0;  // pot2
@@ -86,10 +88,10 @@ void setupRadio() {
 
   // TODO: Change freq depending on "channel"
 
-  if (channel)
-    radio.setChannel(152);
+  // if (channel)
+  //   radio.setChannel(152);
 
-  radio.setPALevel(RF24_PA_LOW);
+  radio.setPALevel(RF24_PA_LOW); // TODO: CHANGE to high power!
   radio.setPayloadSize(sizeof(payload));
   radio.openWritingPipe(address[TX_ADDRESS_NUMBER]);
   radio.openReadingPipe(1, address[!TX_ADDRESS_NUMBER]);
@@ -170,14 +172,14 @@ void getInputs() {
   btn_wheel_inverse.update();
 
   if (btn_barrel_on.changed())
-    barrel_on = btn_barrel_on.read();
+    barrel_on = !barrel_on;
   if (btn_wheel_inverse.changed())
-    wheels_inverse = btn_wheel_inverse.read();
+    wheels_inverse = !wheels_inverse;
 }
 
 void formatSignals() {
   payload[0] = pwr_on; // on/off
-  payload[1] = constrain(barrel_on ? 255 - barrel_trim > 0 : 0, 0, 255); // barrel
+  payload[1] = constrain(barrel_on ? 255 - barrel_trim : 0, 0, 255); // barrel
   
   payload[2] = map(
     joy1 + (l_wheel_trim - (POT_MAX / 2)) / 4, 
@@ -222,11 +224,11 @@ void loop() {
   getInputs();
   formatSignals();
   // if (!DEBUG)
-    transmitRadio();
+  transmitRadio();
 
   if (DEBUG) {
     printInputs();
     printSignals();
-    delay(1000);  // slow transmissions down by 1 second
   }
+  delay(1000);  // slow transmissions down by 1 second
 }
