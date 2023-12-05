@@ -22,12 +22,12 @@
 #define PIN_LED_CON 2
 #define PIN_LED_CHANNEL 4
 #define PIN_ESC_PWM 6
-#define PIN_R_PWM 3
 #define PIN_L_PWM 5
-#define PIN_IN_1 14
-#define PIN_IN_2 15
-#define PIN_IN_3 16
-#define PIN_IN_4 17
+#define PIN_R_PWM 3
+#define PIN_IN_1 16
+#define PIN_IN_2 17
+#define PIN_IN_3 14
+#define PIN_IN_4 15
 
 #define PIN_CHANNEL 8
 
@@ -86,11 +86,10 @@ void setup() {
   ESC.attach(PIN_ESC_PWM, 1000, 2000);
 
   pinMode(PIN_CHANNEL, INPUT);
+
+  delay(500);
+
   channel = digitalRead(PIN_CHANNEL);
-  if (DEBUG) {
-    Serial.print("channel: ");
-    Serial.println(channel);
-  }
 
   missTimeRef = millis();
   reportTimeRef = millis();
@@ -98,6 +97,8 @@ void setup() {
   digitalWrite(PIN_LED_CHANNEL, channel ? HIGH : LOW);
 
   setupRadio();
+  Serial.print("channel: ");
+  Serial.println(channel);
 } 
 
 void applySignals() {
@@ -119,19 +120,25 @@ void applySignals() {
     }
 
     // r_wheel - NOTE: This one is reversed because the motor is mirrored compared to the left one
+    // Serial.print(map(abs(r_wheel_read - HALF), 0, HALF, 0, FULL));
     analogWrite(PIN_R_PWM, map(abs(r_wheel_read - HALF), 0, HALF, 0, FULL));
     if (r_wheel_read < HALF - 5) { // backwards
+      // Serial.print("\tbackwards");
       digitalWrite(PIN_IN_3, HIGH);
       digitalWrite(PIN_IN_4, LOW);
     } else if (r_wheel_read > HALF + 5) { // forwards
+      // Serial.print("\tforwards");
       digitalWrite(PIN_IN_3, LOW);
       digitalWrite(PIN_IN_4, HIGH);
     } else { // off
+      // Serial.print("\toff");
       digitalWrite(PIN_IN_3, LOW);
       digitalWrite(PIN_IN_4, LOW);
     }
+    // Serial.println();
     
   } else {
+    // Serial.print(" NOT pwr ");
     ESC.write(0);
 
     // shut everything down
@@ -151,7 +158,13 @@ void readRadioValues() {
     radio.read(&payload, sizeof(payload));             // fetch payload from FIFO
     radio.flush_rx();
 
+    pwr_on_read = payload[0];
+    barrel_read = payload[1];
+    l_wheel_read = payload[2];
+    r_wheel_read = payload[3];
+
     if (reportTimeRef < millis()) {
+      Serial.println();
       Serial.print(F("Received "));
       Serial.print(sizeof(payload));  // print the size of the payload
       Serial.print(F(" bytes on pipe "));
@@ -165,10 +178,12 @@ void readRadioValues() {
       Serial.print("\t");  // print the payload's value
       Serial.print(payload[3]);  // print the payload's value
       Serial.println();  // print the payload's value
-      reportTimeRef = millis() + 0;
-      digitalWrite(PIN_LED_CON, LOW);
+      reportTimeRef = millis() + 500;
     }
+    digitalWrite(PIN_LED_CON, LOW);
+    missTimeRef = millis() + 1000;
   } else if (missTimeRef < millis()) {
+    pwr_on_read = false;
     missTimeRef = millis() + 3000;
     digitalWrite(PIN_LED_CON, HIGH);
     Serial.print(".");

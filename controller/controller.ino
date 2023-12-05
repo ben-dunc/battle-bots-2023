@@ -27,7 +27,9 @@
 #define CHANNEL 18
 
 #define RED_LED 6
+#define BLUE_LED 5
 #define ORANGE_LED 7
+#define GREEN_LED 8
 
 // RANGES
 #define POT_MAX 340
@@ -92,7 +94,9 @@ void setup() {
   pinMode(PWR_ON, INPUT);
   pinMode(CHANNEL, INPUT);
   pinMode(RED_LED, OUTPUT);
+  pinMode(BLUE_LED, OUTPUT);
   pinMode(ORANGE_LED, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
   btn_barrel_on.attach(BARREL_ON, INPUT);
   btn_barrel_on.interval(20);
   btn_barrel_on.setPressedState(HIGH);
@@ -104,9 +108,9 @@ void setup() {
   long missTimeRef = millis() + 1000;
   long reportTimeRef = millis() + 250;
   
-  digitalWrite(RED_LED, HIGH);
+  digitalWrite(ORANGE_LED, HIGH);
   setupRadio();
-  digitalWrite(RED_LED, LOW);
+  digitalWrite(ORANGE_LED, LOW);
 
   channel = digitalRead(CHANNEL);
   if (DEBUG) {
@@ -163,16 +167,17 @@ void getInputs() {
 
   if (btn_barrel_on.pressed())
     barrel_on = !barrel_on;
+    digitalWrite(RED_LED, barrel_on);
   if (btn_wheel_inverse.pressed())
     wheels_inverse = !wheels_inverse;
+    digitalWrite(BLUE_LED, wheels_inverse);
 }
 
 void formatSignals() {
   payload[0] = pwr_on; // on/off
   payload[1] = constrain(barrel_on ? 255 - barrel_trim : 0, 0, 255); // barrel
   
-  payload[2] = constrain(map(
-    // constrain(joy1 + l_wheel_trim / 4 - 50, 0, JOY_MAX + POT_MAX / 4),
+  uint8_t l_wheel_value = constrain(map(
     joy1,
     JOY_MIN, 
     JOY_MAX,
@@ -180,14 +185,22 @@ void formatSignals() {
     255
   ) - (l_wheel_trim - (POT_MAX / 2)), 0, 255);
   
-  payload[3] = constrain(map(
-    // constrain(joy0 + r_wheel_trim / 4 - 50, 0, JOY_MAX + POT_MAX / 4),
+  uint8_t r_wheel_value = constrain(map(
     joy0,
     JOY_MIN, 
     JOY_MAX,
     0, 
     255
   ) - (r_wheel_trim - (POT_MAX / 2)), 0, 255);
+
+  if (wheels_inverse) {
+    uint8_t swap = map(l_wheel_value, 0, 255, 255, 0);;
+    l_wheel_value = map(r_wheel_value, 0, 255, 255, 0);
+    r_wheel_value = swap;
+  }
+
+  payload[2] = l_wheel_value;
+  payload[3] = r_wheel_value;
 }
 
 void transmitRadio() {
@@ -214,23 +227,23 @@ void transmitRadio() {
       reportTimeRef = millis() + 250;
     }
     missTimeRef = millis() + 1000;
+    digitalWrite(ORANGE_LED, LOW);
   } else if (missTimeRef < millis()) {
     missTimeRef = millis() + 1000;
+    digitalWrite(ORANGE_LED, HIGH);
     Serial.print(F("."));
   }
 }
 
 void loop() {
-  // payload[0] += 1;
-  // payload[1] += 2;
-  // payload[2] -= 1;
-  // payload[3] -= 2;
 
   getInputs();
   // printInputs();
   formatSignals();
 
   transmitRadio();
+
+  digitalWrite(GREEN_LED, pwr_on);
 
   // delay(1000); // slow transmissions down by 1 second
 }
